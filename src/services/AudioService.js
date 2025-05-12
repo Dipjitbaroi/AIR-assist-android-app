@@ -1,364 +1,324 @@
-import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
-import Sound from 'react-native-sound';
+/**
+ * Audio Service
+ * 
+ * Manages audio recording, playback, and processing for the app.
+ * Coordinates between the native audio modules and provides a simplified API.
+ * 
+ * @author AIR-assist Development Team
+ * @version 1.0.0
+ */
+
 import AudioRecord from 'react-native-audio-record';
+import Sound from 'react-native-sound';
 import Voice from '@react-native-community/voice';
+import { Platform } from 'react-native';
+import BackgroundTimer from 'react-native-background-timer';
 import RNFS from 'react-native-fs';
 import { PermissionsService } from './PermissionsService';
-import { AUDIO_SETTINGS, MAX_RECORDING_DURATION } from '../utils/constants';
 
-// Enable playback in silent mode
-Sound.setCategory('Playback');
+// Enable Sound playback in silent mode (iOS)
+Sound.setCategory('Playback', true);
 
-class AudioServiceClass {
-  constructor() {
-    this.isRecording = false;
-    this.audioFile = null;
-    this.sound = null;
-    this.recordingPath = `${RNFS.CachesDirectoryPath}/recording.wav`;
-    this.audioData = [];
-    this.visualizerCallback = null;
-    this.silenceDetectionActive = false;
-    this.silenceThreshold = 15;
-    this.silenceCounter = 0;
-    this.onSilenceDetected = null;
-    this.recordingTimer = null;
-    this.maxRecordingDuration = MAX_RECORDING_DURATION;
-    this.speechResultsCallback = null;
-    this.lastTranscription = '';
-    
-    this.init();
-  }
-
+/**
+ * Service for managing audio recording and playback
+ */
+export class AudioService {
+  static isRecording = false;
+  static isInitialized = false;
+  static recordOptions = null;
+  static audioPath = null;
+  static silenceTimer = null;
+  static currentSound = null;
+  static recordingConfig = {
+    sampleRate: 44100,
+    channels: 1,
+    bitsPerSample: 16,
+    audioSource: 6, // MIC source
+    wavFile: 'recording.wav'
+  };
+  
   /**
    * Initialize the audio service
+   * 
+   * @returns {Promise<void>} Promise that resolves when initialization is complete
    */
-  async init() {
+  static async initialize() {
+    if (this.isInitialized) {
+      return;
+    }
+    
     try {
-      // Configure audio recorder
-      const options = {
-        sampleRate: AUDIO_SETTINGS.SAMPLE_RATE,
-        channels: AUDIO_SETTINGS.CHANNELS,
-        bitsPerSample: AUDIO_SETTINGS.BIT_DEPTH,
-        wavFile: 'recording.wav',
-        audioSource: 6, // MIC for Android
-      };
+      // Check microphone permission
+      const hasMicPermission = await PermissionsService.hasMicrophonePermission();
       
-      await AudioRecord.init(options);
+      if (!hasMicPermission) {
+        throw new Error('Microphone permission not granted');
+      }
       
-      // Initialize voice recognition
-      Voice.onSpeechResults = this.onSpeechResults.bind(this);
-      Voice.onSpeechError = this.onSpeechError.bind(this);
-      Voice.onSpeechEnd = this.onSpeechEnd.bind(this);
+      // Configure Voice recognition
+      Voice.onSpeechStart = this.handleSpeechStart.bind(this);
+      Voice.onSpeechEnd = this.handleSpeechEnd.bind(this);
+      Voice.onSpeechResults = this.handleSpeechResults.bind(this);
+      Voice.onSpeechError = this.handleSpeechError.bind(this);
       
-      // Add event listener for audio data (for visualizer)
-      const audioRecordEmitter = new NativeEventEmitter(NativeModules.AudioRecord);
+      // Configure AudioRecord
+      await AudioRecord.init(this.recordingConfig);
       
-      audioRecordEmitter.addListener('audioData', (data) => {
-        // Add data to the buffer for silence detection
-        this.audioData.push(data);
-        
-        // If we have a visualizer callback, call it with the audio data
-        if (this.visualizerCallback) {
-          this.visualizerCallback(data);
-        }
-        
-        // Check for silence if enabled
-        if (this.silenceDetectionActive) {
-          this.detectSilence(data);
-        }
+      this.isInitialized = true;
+      
+      // Set up the audio file path
+      const dirPath = Platform.select({
+        ios: RNFS.DocumentDirectoryPath,
+        android: RNFS.ExternalDirectoryPath || RNFS.DocumentDirectoryPath,
       });
       
-      return true;
+      this.audioPath = `${dirPath}/recording.wav`;
     } catch (error) {
-      console.error('Error initializing AudioService:', error);
-      return false;
+      console.error('AudioService: Initialization error', error);
+      throw error;
     }
   }
-
+  
   /**
    * Start recording audio
+   * 
+   * @param {Object} options - Recording options
+   * @param {boolean} options.detectSilence - Whether to automatically stop on silence
+   * @param {number} options.silenceThreshold - Threshold for silence detection (0.0-1.0)
+   * @param {boolean} options.useVoiceRecognition - Whether to use voice recognition
+   * @param {Function} options.onSilenceDetected - Callback for silence detection
+   * @param {Function} options.speechResultsCallback - Callback for speech recognition results
+   * @returns {Promise<void>} Promise that resolves when recording starts
    */
-  async startRecording(options = {}) {
+  static async startRecording(options = {}) {
     try {
-      // Request permissions if not already granted
-      const hasPermission = await PermissionsService.checkAudioPermission();
-      if (!hasPermission) {
-        const granted = await PermissionsService.requestAudioPermission();
-        if (!granted) {
-          throw new Error('Audio recording permission denied');
-        }
+      // Initialize if needed
+      if (!this.isInitialized) {
+        await this.initialize();
       }
       
       if (this.isRecording) {
         await this.stopRecording();
       }
       
-      // Clear previous data
-      this.audioData = [];
-      this.silenceCounter = 0;
-      this.lastTranscription = '';
+      this.recordOptions = options;
       
-      // Configure silence detection if needed
-      if (options.detectSilence) {
-        this.silenceDetectionActive = true;
-        this.silenceThreshold = options.silenceThreshold || 15;
-        this.onSilenceDetected = options.onSilenceDetected;
-      } else {
-        this.silenceDetectionActive = false;
-      }
-      
-      // Set visualizer callback if provided
-      if (options.visualizerCallback) {
-        this.visualizerCallback = options.visualizerCallback;
-      }
-      
-      // Set speech results callback
-      if (options.speechResultsCallback) {
-        this.speechResultsCallback = options.speechResultsCallback;
-      }
-      
-      // Start voice recognition if needed
+      // Start voice recognition if enabled
       if (options.useVoiceRecognition) {
         try {
           await Voice.start('en-US');
-        } catch (voiceError) {
-          console.warn('Voice recognition error:', voiceError);
-          // Continue without voice recognition
+        } catch (error) {
+          console.warn('AudioService: Voice recognition start error', error);
+          // Continue even if voice recognition fails
         }
       }
       
-      // Start recording
-      this.isRecording = true;
+      // Start audio recording
       AudioRecord.start();
+      this.isRecording = true;
       
-      // Set a maximum recording time
-      this.recordingTimer = setTimeout(() => {
-        this.stopRecording();
-      }, this.maxRecordingDuration);
-      
-      return true;
+      // Set up silence detection if enabled
+      if (options.detectSilence) {
+        this.startSilenceDetection(
+          options.silenceThreshold || 0.2,
+          options.onSilenceDetected
+        );
+      }
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('AudioService: Start recording error', error);
       throw error;
     }
   }
-
+  
   /**
    * Stop recording audio
+   * 
+   * @returns {Promise<Object>} Recording result object
    */
-  async stopRecording() {
+  static async stopRecording() {
+    if (!this.isRecording) {
+      return null;
+    }
+    
     try {
-      if (!this.isRecording) return null;
-      
-      // Clear the recording timer
-      if (this.recordingTimer) {
-        clearTimeout(this.recordingTimer);
-        this.recordingTimer = null;
+      // Stop silence detection timer
+      if (this.silenceTimer) {
+        BackgroundTimer.clearTimeout(this.silenceTimer);
+        this.silenceTimer = null;
       }
       
-      // Stop voice recognition if it was started
+      // Stop voice recognition
       try {
         await Voice.stop();
-      } catch (voiceError) {
-        // Ignore voice errors when stopping
+      } catch (error) {
+        console.warn('AudioService: Voice recognition stop error', error);
+        // Continue even if voice recognition stop fails
       }
       
-      // Stop recording and get audio file
+      // Stop audio recording
       const audioBase64 = await AudioRecord.stop();
       this.isRecording = false;
       
-      // Reset visualizer callback
-      this.visualizerCallback = null;
-      this.silenceDetectionActive = false;
+      // Get transcription from voice recognition
+      const transcription = this.lastTranscription || '';
       
-      // Save the recording to a file
-      try {
-        await RNFS.writeFile(this.recordingPath, audioBase64, 'base64');
-        this.audioFile = this.recordingPath;
-      } catch (fileError) {
-        console.error('Error saving audio file:', fileError);
-      }
-      
-      return { 
+      return {
         audioBase64,
-        transcription: this.lastTranscription
+        transcription,
+        path: this.audioPath,
       };
     } catch (error) {
-      console.error('Error stopping recording:', error);
+      console.error('AudioService: Stop recording error', error);
       this.isRecording = false;
-      this.visualizerCallback = null;
-      this.silenceDetectionActive = false;
-      return null;
+      throw error;
     }
   }
-
+  
   /**
-   * Play audio from a base64 string
+   * Play audio from base64 data
+   * 
+   * @param {string} base64Audio - Base64-encoded audio data
+   * @returns {Promise<void>} Promise that resolves when playback completes
    */
-  async playAudioFromBase64(base64Audio) {
-    try {
-      // Create a temporary file from the base64 data
-      const tempFile = `${RNFS.CachesDirectoryPath}/temp_playback_${Date.now()}.wav`;
-      await RNFS.writeFile(tempFile, base64Audio, 'base64');
-      
-      return await this.playAudioFile(tempFile, true); // true to delete after playing
-    } catch (error) {
-      console.error('Error playing audio from base64:', error);
-      return false;
+  static async playAudio(base64Audio) {
+    if (!base64Audio) {
+      throw new Error('No audio data provided');
     }
-  }
-
-  /**
-   * Play audio from a file
-   */
-  async playAudioFile(filePath, deleteAfterPlaying = false) {
+    
     try {
-      // Stop any currently playing sound
-      if (this.sound) {
-        this.sound.stop();
-        this.sound.release();
+      // Stop any current playback
+      if (this.currentSound) {
+        this.currentSound.stop();
+        this.currentSound.release();
       }
       
+      // Write base64 audio to file
+      const filePath = `${RNFS.CachesDirectoryPath}/playback.wav`;
+      await RNFS.writeFile(filePath, base64Audio, 'base64');
+      
+      // Create and play sound
       return new Promise((resolve, reject) => {
-        this.sound = new Sound(filePath, '', (error) => {
+        this.currentSound = new Sound(filePath, '', (error) => {
           if (error) {
-            console.error('Error loading sound:', error);
+            console.error('AudioService: Sound load error', error);
             reject(error);
             return;
           }
           
-          // Play the sound
-          this.sound.play((success) => {
-            // Clean up after playing
-            if (this.sound) {
-              this.sound.release();
-              this.sound = null;
+          this.currentSound.play((success) => {
+            if (success) {
+              resolve();
+            } else {
+              reject(new Error('Playback failed'));
             }
             
-            // Delete the file if requested
-            if (deleteAfterPlaying) {
-              RNFS.unlink(filePath).catch(e => console.warn('Error deleting temp file:', e));
-            }
-            
-            resolve(success);
+            // Clean up
+            this.currentSound.release();
+            this.currentSound = null;
           });
         });
       });
     } catch (error) {
-      console.error('Error playing audio file:', error);
-      return false;
+      console.error('AudioService: Play audio error', error);
+      throw error;
     }
   }
   
   /**
-   * Play audio through the connected Bluetooth device
+   * Start silence detection
+   * 
+   * @param {number} threshold - Threshold for silence detection (0.0-1.0)
+   * @param {Function} callback - Callback when silence is detected
    */
-  async playAudioThroughBluetooth(base64Audio) {
-    try {
-      // The implementation depends on the specific Bluetooth device
-      // This is a simplified version that just uses the normal playback
-      // In a real implementation, you'd need to handle routing audio specifically to the Bluetooth device
-      return await this.playAudioFromBase64(base64Audio);
-    } catch (error) {
-      console.error('Error playing audio through Bluetooth:', error);
-      return false;
+  static startSilenceDetection(threshold, callback) {
+    // Clear any existing timer
+    if (this.silenceTimer) {
+      BackgroundTimer.clearTimeout(this.silenceTimer);
     }
-  }
-
-  /**
-   * Get the recorded audio file path
-   */
-  getAudioFilePath() {
-    return this.audioFile;
-  }
-
-  /**
-   * Detect silence in audio data
-   */
-  detectSilence(audioData) {
-    try {
-      // Simple silence detection based on audio amplitude
-      const buffer = Buffer.from(audioData, 'base64');
-      let sum = 0;
+    
+    // Create silent detection subscription
+    AudioRecord.on('data', (data) => {
+      // Process audio data to detect silence
+      // This is a simplified implementation - actual silence detection
+      // would involve analyzing audio levels
       
-      // Process the buffer in 2-byte chunks (16-bit samples)
-      for (let i = 0; i < buffer.length; i += 2) {
-        const sample = buffer.readInt16LE(i);
-        sum += Math.abs(sample);
+      // For this example, we'll use a timer-based approach
+      if (this.silenceTimer) {
+        BackgroundTimer.clearTimeout(this.silenceTimer);
       }
       
-      // Calculate average amplitude
-      const average = sum / (buffer.length / 2);
-      
-      // Check if below threshold
-      if (average < this.silenceThreshold) {
-        this.silenceCounter++;
-        
-        // If silent for more than 1.5 seconds (assuming 20ms chunks)
-        if (this.silenceCounter > 75 && this.onSilenceDetected) {
-          this.onSilenceDetected();
-          this.silenceCounter = 0;
+      this.silenceTimer = BackgroundTimer.setTimeout(() => {
+        if (this.isRecording && callback) {
+          callback();
         }
-      } else {
-        this.silenceCounter = 0;
-      }
-    } catch (error) {
-      console.warn('Error in silence detection:', error);
-    }
+      }, 2000); // 2 seconds of silence
+    });
   }
-
+  
   /**
-   * Speech recognition result handler
+   * Handle speech recognition start event
    */
-  onSpeechResults(event) {
+  static handleSpeechStart() {
+    // Speech recognition has started
+    this.lastTranscription = '';
+  }
+  
+  /**
+   * Handle speech recognition end event
+   */
+  static handleSpeechEnd() {
+    // Speech recognition has ended
+  }
+  
+  /**
+   * Handle speech recognition results event
+   * 
+   * @param {Object} event - Speech recognition event
+   */
+  static handleSpeechResults(event) {
     if (event.value && event.value.length > 0) {
-      // Store the transcription
+      // Get the most likely transcription
       this.lastTranscription = event.value[0];
       
-      // Call the callback if it exists
-      if (this.speechResultsCallback) {
-        this.speechResultsCallback(this.lastTranscription);
+      // Call callback if provided
+      if (this.recordOptions && this.recordOptions.speechResultsCallback) {
+        this.recordOptions.speechResultsCallback(this.lastTranscription);
       }
     }
   }
-
+  
   /**
-   * Speech recognition error handler
+   * Handle speech recognition error event
+   * 
+   * @param {Object} event - Speech recognition error event
    */
-  onSpeechError(event) {
-    console.warn('Speech recognition error:', event);
+  static handleSpeechError(event) {
+    console.warn('AudioService: Speech recognition error', event);
   }
   
   /**
-   * Speech recognition end handler
+   * Clean up resources used by the audio service
    */
-  onSpeechEnd() {
-    console.log('Speech recognition ended');
-  }
-
-  /**
-   * Get the last transcription
-   */
-  getLastTranscription() {
-    return this.lastTranscription || '';
-  }
-
-  /**
-   * Clean up resources
-   */
-  cleanup() {
+  static cleanup() {
     if (this.isRecording) {
       this.stopRecording().catch(console.error);
     }
     
-    if (this.sound) {
-      this.sound.stop();
-      this.sound.release();
-      this.sound = null;
+    if (this.currentSound) {
+      this.currentSound.stop();
+      this.currentSound.release();
+      this.currentSound = null;
     }
     
     Voice.destroy().catch(console.error);
+    
+    if (this.silenceTimer) {
+      BackgroundTimer.clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+    
+    this.isInitialized = false;
   }
 }
 
-export const AudioService = new AudioServiceClass();
+export default AudioService;

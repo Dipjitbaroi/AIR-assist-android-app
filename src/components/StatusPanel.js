@@ -1,104 +1,176 @@
+/**
+ * Status Panel Component
+ * 
+ * Displays the current connection status, Bluetooth devices list,
+ * and other status indicators for the application.
+ * 
+ * @author AIR-assist Development Team
+ * @version 1.0.0
+ */
+
 import React, { useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Modal, 
-  FlatList 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { colors } from '../styles/colors';
 import { BluetoothContext } from '../context/BluetoothContext';
+import { colors } from '../styles/colors';
+import { typography } from '../styles/typography';
+import { layout } from '../styles/layout';
+import { BT_CONNECTION_STATES } from '../utils/constants';
 
-const StatusPanel = ({ 
-  wsConnected, 
-  bluetoothConnected, 
+/**
+ * Status Panel Component
+ * 
+ * @param {Object} props - Component properties
+ * @param {boolean} props.wsConnected - Whether WebSocket is connected
+ * @param {boolean} props.bluetoothConnected - Whether Bluetooth is connected
+ * @param {boolean} props.isListening - Whether app is in listening mode
+ * @param {string} props.bluetoothStatus - Current Bluetooth connection state
+ * @param {boolean} props.showDevices - Whether to show the devices list
+ * @param {Function} props.onClose - Function to call when closing devices list
+ * @returns {React.ReactElement} Rendered component
+ */
+const StatusPanel = ({
+  wsConnected,
+  bluetoothConnected,
   isListening,
   bluetoothStatus,
   showDevices,
-  onClose
+  onClose,
 }) => {
-  const { 
-    devices, 
-    connectedDevice, 
-    isScanning, 
-    startScan, 
-    connectToDevice 
+  // Get Bluetooth context
+  const {
+    discoveredDevices,
+    previousDevices,
+    connectToDevice,
+    connectedDevice,
+    isScanning,
+    startScan,
   } = useContext(BluetoothContext);
   
-  // Render a device item in the list
+  /**
+   * Get icon name based on connection status
+   * 
+   * @param {string} type - Connection type (server, bluetooth, listening)
+   * @returns {string} Material icon name
+   */
+  const getStatusIcon = (type) => {
+    switch (type) {
+      case 'server':
+        return wsConnected ? 'cloud-done' : 'cloud-off';
+      case 'bluetooth':
+        return bluetoothConnected ? 'bluetooth-connected' : 'bluetooth-disabled';
+      case 'listening':
+        return isListening ? 'hearing' : 'hearing-disabled';
+      default:
+        return 'help';
+    }
+  };
+  
+  /**
+   * Get color based on connection status
+   * 
+   * @param {string} type - Connection type (server, bluetooth, listening)
+   * @returns {string} Color value
+   */
+  const getStatusColor = (type) => {
+    switch (type) {
+      case 'server':
+        return wsConnected ? colors.success : colors.error;
+      case 'bluetooth':
+        return bluetoothConnected ? colors.success : colors.error;
+      case 'listening':
+        return isListening ? colors.success : colors.textSecondary;
+      default:
+        return colors.textSecondary;
+    }
+  };
+  
+  /**
+   * Get text based on connection status
+   * 
+   * @param {string} type - Connection type (server, bluetooth, listening)
+   * @returns {string} Status text
+   */
+  const getStatusText = (type) => {
+    switch (type) {
+      case 'server':
+        return wsConnected ? 'Connected' : 'Disconnected';
+      case 'bluetooth':
+        return bluetoothConnected 
+          ? `${connectedDevice ? connectedDevice.name || 'Device' : 'Connected'}` 
+          : 'Disconnected';
+      case 'listening':
+        return isListening ? 'Auto-listening' : 'Manual';
+      default:
+        return 'Unknown';
+    }
+  };
+  
+  /**
+   * Handle connecting to a Bluetooth device
+   * 
+   * @param {Object} device - Device object to connect to
+   */
+  const handleDeviceConnect = async (device) => {
+    try {
+      await connectToDevice(device.id);
+      onClose(); // Close the modal after connecting
+    } catch (error) {
+      console.error('Error connecting to device:', error);
+    }
+  };
+  
+  /**
+   * Render a device item in the list
+   * 
+   * @param {Object} item - Device object
+   * @returns {React.ReactElement} Rendered component
+   */
   const renderDeviceItem = ({ item }) => {
     const isConnected = connectedDevice && connectedDevice.id === item.id;
     
     return (
       <TouchableOpacity
-        style={[
-          styles.deviceItem,
-          isConnected && styles.connectedDeviceItem
-        ]}
-        onPress={() => {
-          if (!isConnected) {
-            connectToDevice(item);
-          }
-        }}
+        style={[styles.deviceItem, isConnected && styles.connectedDeviceItem]}
+        onPress={() => !isConnected && handleDeviceConnect(item)}
         disabled={isConnected}
       >
         <View style={styles.deviceInfo}>
-          <Text style={styles.deviceName}>{item.name}</Text>
+          <Text style={styles.deviceName}>{item.name || 'Unknown Device'}</Text>
           <Text style={styles.deviceId}>{item.id}</Text>
         </View>
+        
         <View style={styles.deviceStatus}>
           {isConnected ? (
-            <Icon name="bluetooth-connected" size={24} color={colors.success} />
+            <View style={styles.connectedIndicator}>
+              <Icon name="check-circle" size={20} color={colors.success} />
+              <Text style={styles.connectedText}>Connected</Text>
+            </View>
           ) : (
-            <Icon name="bluetooth" size={24} color={colors.primary} />
+            <Icon name="bluetooth" size={20} color={colors.primary} />
           )}
         </View>
       </TouchableOpacity>
     );
   };
   
-  return (
-    <View style={styles.container}>
-      <View style={styles.statusItem}>
-        <Icon 
-          name={wsConnected ? 'cloud-done' : 'cloud-off'} 
-          size={20} 
-          color={wsConnected ? colors.success : colors.error} 
-        />
-        <Text style={styles.statusText}>
-          {wsConnected ? 'Connected to server' : 'Disconnected from server'}
-        </Text>
-      </View>
-      
-      <View style={styles.statusItem}>
-        <Icon 
-          name={bluetoothConnected ? 'bluetooth-connected' : 'bluetooth-disabled'} 
-          size={20} 
-          color={bluetoothConnected ? colors.success : colors.error} 
-        />
-        <Text style={styles.statusText}>
-          {bluetoothConnected 
-            ? `Connected to ${connectedDevice.name}` 
-            : 'No Bluetooth device connected'}
-        </Text>
-      </View>
-      
-      <View style={styles.statusItem}>
-        <Icon 
-          name={isListening ? 'hearing' : 'hearing-disabled'} 
-          size={20} 
-          color={isListening ? colors.success : colors.textSecondary} 
-        />
-        <Text style={styles.statusText}>
-          {isListening ? 'Auto-listening enabled' : 'Auto-listening disabled'}
-        </Text>
-      </View>
-      
+  /**
+   * Render the devices modal
+   * 
+   * @returns {React.ReactElement} Rendered component
+   */
+  const renderDevicesModal = () => {
+    return (
       <Modal
         visible={showDevices}
-        transparent={true}
+        transparent
         animationType="slide"
         onRequestClose={onClose}
       >
@@ -106,163 +178,254 @@ const StatusPanel = ({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Bluetooth Devices</Text>
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Icon name="close" size={24} color={colors.textPrimary} />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={onClose}
+              >
+                <Icon name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             
-            <FlatList
-              data={devices}
-              renderItem={renderDeviceItem}
-              keyExtractor={(item) => item.id}
-              style={styles.deviceList}
-              ListHeaderComponent={
-                <View style={styles.listHeader}>
-                  <Text style={styles.listHeaderText}>
-                    {isScanning 
-                      ? 'Scanning for devices...' 
-                      : devices.length > 0 
-                        ? 'Available devices:' 
-                        : 'No devices found'}
-                  </Text>
-                </View>
-              }
-              ListEmptyComponent={
-                <View style={styles.emptyList}>
-                  <Icon name="bluetooth-searching" size={48} color={colors.border} />
-                  <Text style={styles.emptyListText}>
-                    {isScanning 
-                      ? 'Searching for devices...' 
-                      : 'No Bluetooth devices found'}
-                  </Text>
-                </View>
-              }
-              ListFooterComponent={
+            {/* Discovered devices */}
+            <View style={styles.devicesSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Available Devices</Text>
                 <TouchableOpacity
-                  style={styles.scanButton}
+                  style={styles.refreshButton}
                   onPress={startScan}
                   disabled={isScanning}
                 >
-                  <Text style={styles.scanButtonText}>
-                    {isScanning ? 'Scanning...' : 'Scan for Devices'}
-                  </Text>
+                  {isScanning ? (
+                    <Text style={styles.scanningText}>Scanning...</Text>
+                  ) : (
+                    <Icon name="refresh" size={20} color={colors.primary} />
+                  )}
                 </TouchableOpacity>
-              }
-            />
+              </View>
+              
+              {discoveredDevices.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  {isScanning
+                    ? 'Searching for devices...'
+                    : 'No devices found. Tap refresh to scan again.'}
+                </Text>
+              ) : (
+                <FlatList
+                  data={discoveredDevices}
+                  renderItem={renderDeviceItem}
+                  keyExtractor={(item) => item.id}
+                  style={styles.devicesList}
+                />
+              )}
+            </View>
+            
+            {/* Previously connected devices */}
+            {previousDevices.length > 0 && (
+              <View style={styles.devicesSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Previously Connected</Text>
+                </View>
+                
+                <FlatList
+                  data={previousDevices}
+                  renderItem={renderDeviceItem}
+                  keyExtractor={(item) => item.id}
+                  style={styles.devicesList}
+                />
+              </View>
+            )}
           </View>
         </View>
       </Modal>
+    );
+  };
+  
+  return (
+    <View style={styles.container}>
+      {/* Connection status indicators */}
+      <View style={styles.statusRow}>
+        <View style={styles.statusItem}>
+          <Icon
+            name={getStatusIcon('server')}
+            size={20}
+            color={getStatusColor('server')}
+          />
+          <Text style={styles.statusText}>
+            Server: {getStatusText('server')}
+          </Text>
+        </View>
+        
+        <View style={styles.statusItem}>
+          <Icon
+            name={getStatusIcon('bluetooth')}
+            size={20}
+            color={getStatusColor('bluetooth')}
+          />
+          <Text style={styles.statusText}>
+            BT: {getStatusText('bluetooth')}
+          </Text>
+        </View>
+        
+        <View style={styles.statusItem}>
+          <Icon
+            name={getStatusIcon('listening')}
+            size={20}
+            color={getStatusColor('listening')}
+          />
+          <Text style={styles.statusText}>
+            Mode: {getStatusText('listening')}
+          </Text>
+        </View>
+      </View>
+      
+      {/* Bluetooth devices modal */}
+      {renderDevicesModal()}
     </View>
   );
 };
 
+/**
+ * Component styles
+ */
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.backgroundDark,
-    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    paddingVertical: layout.spacing.xs,
+    paddingHorizontal: layout.spacing.medium,
   },
+  
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
   statusItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
   },
+  
   statusText: {
-    marginLeft: 8,
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
+    marginLeft: layout.spacing.xxs,
   },
+  
+  // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: colors.semiTransparent,
+    justifyContent: 'flex-end',
   },
+  
   modalContent: {
-    width: '90%',
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     maxHeight: '80%',
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 5,
+    ...layout.shadows.large,
   },
+  
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: layout.spacing.medium,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.backgroundDark,
   },
+  
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.h4,
     color: colors.textPrimary,
   },
+  
   closeButton: {
-    padding: 4,
+    padding: layout.spacing.xs,
   },
-  deviceList: {
-    maxHeight: 400,
+  
+  devicesSection: {
+    marginBottom: layout.spacing.medium,
   },
-  listHeader: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: layout.spacing.medium,
+    paddingVertical: layout.spacing.small,
+    backgroundColor: colors.backgroundDark,
   },
-  listHeaderText: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  
+  sectionTitle: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  
+  refreshButton: {
+    padding: layout.spacing.xs,
+  },
+  
+  scanningText: {
+    ...typography.caption,
+    color: colors.primary,
     fontStyle: 'italic',
   },
+  
+  devicesList: {
+    maxHeight: 200,
+  },
+  
   deviceItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: layout.spacing.medium,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  
   connectedDeviceItem: {
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    backgroundColor: colors.withOpacity(colors.success, 0.05),
   },
+  
   deviceInfo: {
     flex: 1,
   },
+  
   deviceName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    ...typography.bodyMedium,
     color: colors.textPrimary,
   },
+  
   deviceId: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
-    marginTop: 4,
   },
+  
   deviceStatus: {
-    marginLeft: 8,
+    marginLeft: layout.spacing.medium,
   },
-  emptyList: {
-    padding: 24,
+  
+  connectedIndicator: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  emptyListText: {
-    marginTop: 16,
+  
+  connectedText: {
+    ...typography.caption,
+    color: colors.success,
+    marginLeft: layout.spacing.xxs,
+  },
+  
+  emptyText: {
+    ...typography.body,
     color: colors.textSecondary,
+    fontStyle: 'italic',
     textAlign: 'center',
-  },
-  scanButton: {
-    backgroundColor: colors.primary,
-    padding: 12,
-    margin: 16,
-    borderRadius: 4,
-    alignItems: 'center',
-  },
-  scanButtonText: {
-    color: colors.white,
-    fontWeight: 'bold',
+    padding: layout.spacing.medium,
   },
 });
 

@@ -1,3 +1,13 @@
+/**
+ * Home Screen
+ * 
+ * Main application screen that provides voice interface, conversation display,
+ * and controls for interacting with the AI assistant.
+ * 
+ * @author AIR-assist Development Team
+ * @version 1.0.0
+ */
+
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import {
   View,
@@ -10,15 +20,33 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
+// Contexts
 import { AppContext } from '../context/AppContext';
 import { BluetoothContext } from '../context/BluetoothContext';
+
+// Services
 import { AudioService } from '../services/AudioService';
-import { colors } from '../styles/colors';
+
+// Components
 import Conversation from '../components/Conversation';
 import StatusPanel from '../components/StatusPanel';
 import Header from '../components/Header';
 
+// Styles and utilities
+import { colors } from '../styles/colors';
+import { layout } from '../styles/layout';
+import { typography } from '../styles/typography';
+
+/**
+ * Home Screen Component
+ * 
+ * @param {Object} props - Component properties
+ * @param {Object} props.navigation - Navigation object
+ * @returns {React.ReactElement} Rendered component
+ */
 const HomeScreen = ({ navigation }) => {
+  // App context
   const {
     wsConnected,
     settings,
@@ -30,6 +58,7 @@ const HomeScreen = ({ navigation }) => {
     setIsProcessingAudio,
   } = useContext(AppContext);
   
+  // Bluetooth context
   const {
     isBluetoothEnabled,
     connectedDevice,
@@ -38,24 +67,33 @@ const HomeScreen = ({ navigation }) => {
     error: bluetoothError,
   } = useContext(BluetoothContext);
   
+  // Local state
   const [isRecording, setIsRecording] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [showBluetoothDevices, setShowBluetoothDevices] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  
+  // Refs
   const conversationRef = useRef(null);
   
-  // Scroll to bottom when new messages arrive
+  /**
+   * Effect to scroll to bottom when new messages arrive
+   */
   useEffect(() => {
     if (conversationRef.current && messages.length > 0) {
+      // Use small timeout to ensure layout is complete
       setTimeout(() => {
         conversationRef.current.scrollToEnd({ animated: true });
       }, 100);
     }
   }, [messages]);
   
-  // Handle auto-listening after AI response
+  /**
+   * Effect to handle auto-listening after AI response
+   */
   useEffect(() => {
     if (settings.autoListen && !isProcessingAudio && !isSpeaking && !isRecording && isListening) {
+      // Start listening again after a short delay
       const timer = setTimeout(() => {
         handleStartRecording();
       }, 1000);
@@ -64,16 +102,21 @@ const HomeScreen = ({ navigation }) => {
     }
   }, [isProcessingAudio, isSpeaking, isListening]);
   
-  // Start listening when auto-listen is enabled
+  /**
+   * Effect to start listening when auto-listen is enabled
+   */
   useEffect(() => {
     if (settings.autoListen && !isListening && wsConnected && isBluetoothEnabled && connectedDevice) {
       setIsListening(true);
     }
   }, [wsConnected, isBluetoothEnabled, connectedDevice, settings.autoListen]);
   
-  // Start recording audio
+  /**
+   * Start recording audio
+   */
   const handleStartRecording = async () => {
     try {
+      // Don't start if already recording or processing
       if (isRecording || isProcessingAudio || isSpeaking) return;
       
       setIsRecording(true);
@@ -99,7 +142,9 @@ const HomeScreen = ({ navigation }) => {
     }
   };
   
-  // Stop recording and process audio
+  /**
+   * Stop recording and process audio
+   */
   const handleStopRecording = async () => {
     try {
       if (!isRecording) return;
@@ -119,7 +164,9 @@ const HomeScreen = ({ navigation }) => {
     }
   };
   
-  // Toggle bluetooth device selection
+  /**
+   * Toggle showing Bluetooth devices list
+   */
   const toggleBluetoothDevices = () => {
     if (!showBluetoothDevices) {
       startScan().catch(console.error);
@@ -127,7 +174,9 @@ const HomeScreen = ({ navigation }) => {
     setShowBluetoothDevices(!showBluetoothDevices);
   };
   
-  // Toggle auto-listening mode
+  /**
+   * Toggle auto-listening mode
+   */
   const toggleListening = () => {
     if (isListening) {
       setIsListening(false);
@@ -139,8 +188,30 @@ const HomeScreen = ({ navigation }) => {
     }
   };
   
+  /**
+   * Prompt user to confirm conversation clearing
+   */
+  const confirmClearConversation = () => {
+    Alert.alert(
+      'Clear Conversation',
+      'Are you sure you want to clear the conversation history?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear',
+          onPress: clearConversation,
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header with title and action buttons */}
       <Header 
         title="AIRAssist"
         onSettingsPress={() => navigation.navigate('Settings')}
@@ -148,6 +219,7 @@ const HomeScreen = ({ navigation }) => {
         onBluetoothPress={toggleBluetoothDevices}
       />
       
+      {/* Status panel showing connection states */}
       <StatusPanel 
         wsConnected={wsConnected}
         bluetoothConnected={!!connectedDevice}
@@ -157,31 +229,18 @@ const HomeScreen = ({ navigation }) => {
         onClose={() => setShowBluetoothDevices(false)}
       />
       
+      {/* Main conversation area */}
       <View style={styles.content}>
         <Conversation 
           messages={messages}
-          onClearConversation={() => {
-            Alert.alert(
-              'Clear Conversation',
-              'Are you sure you want to clear the conversation?',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Clear',
-                  onPress: clearConversation,
-                  style: 'destructive',
-                },
-              ]
-            );
-          }}
+          onClearConversation={confirmClearConversation}
           ref={conversationRef}
         />
       </View>
       
+      {/* Footer with controls */}
       <View style={styles.footer}>
+        {/* Transcription display when recording */}
         {isRecording && (
           <View style={styles.transcriptionContainer}>
             <Text style={styles.transcriptionText}>
@@ -190,7 +249,9 @@ const HomeScreen = ({ navigation }) => {
           </View>
         )}
         
+        {/* Control buttons */}
         <View style={styles.controls}>
+          {/* Auto-listen toggle */}
           <TouchableOpacity
             style={[
               styles.listenButton,
@@ -205,6 +266,7 @@ const HomeScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
           
+          {/* Main record button */}
           <TouchableOpacity
             style={[
               styles.recordButton,
@@ -225,25 +287,10 @@ const HomeScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
           
+          {/* Clear conversation button */}
           <TouchableOpacity
             style={styles.clearButton}
-            onPress={() => {
-              Alert.alert(
-                'Clear Conversation',
-                'Are you sure you want to clear the conversation?',
-                [
-                  {
-                    text: 'Cancel',
-                    style: 'cancel',
-                  },
-                  {
-                    text: 'Clear',
-                    onPress: clearConversation,
-                    style: 'destructive',
-                  },
-                ]
-              );
-            }}
+            onPress={confirmClearConversation}
           >
             <Icon name="clear-all" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -253,36 +300,46 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
+/**
+ * Component styles
+ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+  
   content: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: layout.spacing.medium,
   },
+  
   footer: {
-    padding: 16,
+    padding: layout.spacing.medium,
     backgroundColor: colors.backgroundLight,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    ...layout.shadows.medium,
   },
+  
   transcriptionContainer: {
     backgroundColor: colors.backgroundDark,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    padding: layout.spacing.medium,
+    marginBottom: layout.spacing.medium,
   },
+  
   transcriptionText: {
+    ...typography.bodyMedium,
     color: colors.textPrimary,
-    fontSize: 16,
   },
+  
   controls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  
   recordButton: {
     width: 64,
     height: 64,
@@ -290,14 +347,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
+    ...layout.shadows.medium,
   },
+  
   recordButtonActive: {
     backgroundColor: colors.error,
   },
+  
   recordButtonDisabled: {
     backgroundColor: colors.primaryLight,
   },
+  
   listenButton: {
     width: 48,
     height: 48,
@@ -308,9 +368,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  
   listenButtonActive: {
     backgroundColor: colors.success,
   },
+  
   clearButton: {
     width: 48,
     height: 48,

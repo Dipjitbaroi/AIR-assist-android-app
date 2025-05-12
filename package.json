@@ -6,6 +6,12 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "start": "react-native start",
+    "start:alt": "react-native start --port 8082",
+    "start:env": "node scripts/start-metro.js",
+    "android:env": "node scripts/run-android.js",
+    "check-env": "node scripts/check-env.js",
+    "kill-metro": "npx react-native --kill-packager",
+    "fix-gradle": "node scripts/fix-gradle.js",
     "test": "jest",
     "lint": "eslint ."
   },
@@ -16,6 +22,7 @@
     "@react-native-picker/picker": "^2.4.8",
     "@react-navigation/native": "^6.1.6",
     "@react-navigation/stack": "^6.3.16",
+    "dotenv": "^16.0.0",
     "react": "18.2.0",
     "react-native": "0.71.8",
     "react-native-audio-record": "^0.2.2",
@@ -23,6 +30,7 @@
     "react-native-ble-manager": "^10.0.2",
     "react-native-ble-plx": "^2.0.3",
     "react-native-device-info": "^10.6.0",
+    "react-native-dotenv": "^3.4.0",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.10.1",
     "react-native-permissions": "^3.8.0",
@@ -44,5 +52,12 @@
   },
   "jest": {
     "preset": "react-native"
+  },
+  "react-native": {
+    "project": {
+      "android": {
+        "sourceDir": "./android"
+      }
+    }
   }
 }

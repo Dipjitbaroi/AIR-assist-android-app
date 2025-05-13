@@ -1,231 +1,126 @@
-# AIR-assist Android Application
+# AIR-assist Mobile Application
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![React Native](https://img.shields.io/badge/React%20Native-0.71.8-blue.svg)](https://reactnative.dev/)
-[![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://www.android.com/)
+A React Native mobile application for AIR-assist, providing voice interaction and Bluetooth connectivity.
 
-A voice-controlled AI assistant application optimized for hands-free use with Bluetooth headsets.
+## Project Structure
 
-## Overview
-
-AIR-assist provides a seamless voice interface to interact with an AI assistant through Bluetooth audio devices. The application is designed for portable, hands-free operation, allowing users to communicate with the AI assistant while on the go, driving, or in situations where hands-free operation is preferred.
-
-## Features
-
-- **Voice-Controlled AI Interactions**: Send voice commands and receive audio responses
-- **Bluetooth Headset Integration**: Optimized for wireless headsets and earbuds
-- **Conversation History**: View and manage your conversation with the AI assistant
-- **Auto-Listening Mode**: Automatically start listening after AI responses
-- **Offline Message Queuing**: Save messages when disconnected for later processing
-- **Customizable Settings**: Adjust audio sensitivity, voice types, and behavior
-- **Visual Conversation Display**: Text transcription of both user input and AI responses
-
-## Architecture
-
-The application follows a modern React Native architecture with the following key components:
-
-### Core Technologies
-
-- **React Native 0.71.8**: Framework for building the mobile application
-- **Context API**: State management for application-wide data
-- **WebSockets**: Real-time communication with the AI backend server
-- **BLE (Bluetooth Low Energy)**: Communication with Bluetooth audio devices
-- **Native Audio Services**: Recording and playback of audio
-
-### Directory Structure
+The project follows a modular, feature-based architecture with clear separation of concerns:
 
 ```
 src/
-├── components/       # UI components
-│   ├── common/       # Reusable UI elements
-│   └── ...           # Feature-specific components
-├── context/          # Context providers for state management
-├── screens/          # Application screens
-├── services/         # Business logic and external services
-├── styles/           # Styling constants and utilities
-└── utils/            # Helper functions and constants
+├── assets/            # Static assets like images, fonts, etc.
+├── components/        # Reusable UI components
+│   ├── common/        # Generic UI components (Button, Card, etc.)
+│   └── features/      # Feature-specific components
+├── config/            # Configuration files
+├── hooks/             # Custom React hooks
+├── navigation/        # Navigation configuration
+├── screens/           # Screen components
+├── services/          # Service implementations
+├── store/             # Global state management
+├── styles/            # Styling utilities and theme
+├── types/             # TypeScript type definitions
+└── utils/             # Utility functions
 ```
 
-## Getting Started
+## Key Features
 
-### Prerequisites
+- Voice interaction with AI assistant
+- Bluetooth device connectivity
+- WebSocket communication
+- Offline message queuing
+- Responsive UI with theme support
 
-- Node.js (v14+)
-- JDK 11+
-- Android Studio
-- Android SDK (API level 21+)
-- Git
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/AIR-assist-android-app.git
-   cd AIR-assist-android-app
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure Android SDK:
-   - Ensure ANDROID_HOME environment variable is set correctly
-   - Install required SDK platforms and build tools
-
-4. Start the Metro bundler:
-   ```bash
-   npm start
-   ```
-
-5. Run the application:
-   ```bash
-   npm run android
-   ```
-
-### Common Setup Issues
-
-#### Android project not found
-If you encounter an error like "Android project not found", ensure that:
-- The android directory exists in your project
-- You have properly configured the project.android.sourceDir option in package.json
-
-```bash
-# Fix missing android directory
-node fix-gradle-wrapper.js
-```
-
-#### Gradle wrapper issues
-If you encounter Gradle wrapper errors, run:
-```bash
-cd android
-gradle wrapper --gradle-version 7.5.1
-cd ..
-```
-
-## Development Guide
-
-### Key Files
-
-- **App.js**: Application entry point and navigation setup
-- **src/context/AppContext.js**: Main state management for the app
-- **src/context/BluetoothContext.js**: Bluetooth device management
-- **src/screens/HomeScreen.js**: Main interface for the assistant
-- **src/screens/SettingsScreen.js**: Configuration options
-- **src/services/WebSocketService.js**: Communication with AI backend
-- **src/services/AudioService.js**: Audio recording and playback
+## Architecture Highlights
 
 ### State Management
 
-The application uses React Context API for state management, with two main contexts:
+The application uses React Context API for state management, with a modular approach:
 
-1. **AppContext**: Manages app-wide state including:
-   - WebSocket connection state
-   - Messages and conversation history
-   - Settings and preferences
-   - Audio processing state
+- `AppContext`: Manages application state, settings, and messages
+- `BluetoothContext`: Manages Bluetooth device connections and communication
 
-2. **BluetoothContext**: Handles Bluetooth-related functionality:
-   - Device discovery and connection
-   - Connection state management
-   - Data transfer with connected devices
+### Custom Hooks
 
-### Adding New Features
+Custom hooks encapsulate complex logic and provide a clean API for components:
 
-When adding new features, follow these guidelines:
+- `useAudio`: Audio recording and playback
+- `useBluetooth`: Bluetooth device scanning and connection
+- `useWebSocket`: WebSocket communication
+- `useForm`: Form state management
+- `useAppContext`: Access to AppContext
+- `useBluetoothContext`: Access to BluetoothContext
 
-1. **Create Components**: Add new UI components in the appropriate directory
-2. **Update Context**: Extend context providers if new state is required
-3. **Services**: Add business logic in the services directory
-4. **Styling**: Use the centralized styles from src/styles
-5. **Testing**: Add tests for new functionality
+### Styling System
 
-## Customization
+A comprehensive theming system with:
 
-### Theming
+- Consistent color palette
+- Typography scale
+- Spacing system
+- Responsive utilities
+- Platform-specific adaptations
 
-The application uses a centralized theming system in `src/styles/colors.js`. Modify this file to change the application's color scheme.
+### Navigation
 
-### Configuration
+React Navigation is used for screen navigation with a stack-based approach.
 
-Default settings are defined in `src/utils/constants.js`. Adjust these values to change the default behavior of the application.
+## Development Setup
 
-## Troubleshooting
+### Prerequisites
 
-### Connection Issues
+- Node.js (v14 or newer)
+- npm or yarn
+- React Native CLI
+- Android Studio (for Android development)
+- Xcode (for iOS development)
 
-If the application fails to connect to the AI backend:
-1. Check the WebSocket server URL in settings
-2. Ensure your device has internet connectivity
-3. Verify that the server is running and accessible
+### Installation
 
-### Bluetooth Problems
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+   or
+   ```
+   yarn
+   ```
 
-If Bluetooth devices aren't connecting properly:
-1. Ensure Bluetooth is enabled on your device
-2. Check that necessary permissions are granted
-3. Try restarting the Bluetooth service on your device
-4. Make sure the device is in pairing mode
+### Running the App
 
-### Audio Recording Issues
+#### Android
 
-If voice recording isn't working:
-1. Check microphone permissions
-2. Verify that the microphone isn't being used by another application
-3. Adjust the microphone sensitivity in settings
-4. Ensure that the device has a working microphone
-
-## API Integration
-
-The application communicates with the AI backend server using WebSockets. The protocol is defined as follows:
-
-### Client-to-Server Messages
-
-```json
-{
-  "type": "audioMessage",
-  "audio": "base64-encoded-audio-data",
-  "transcription": "optional-text-transcription",
-  "userId": "user-identifier",
-  "userName": "user-display-name",
-  "voice": "preferred-voice-type",
-  "timestamp": 1621234567890,
-  "messageId": "unique-message-identifier"
-}
+```
+npm run android
+```
+or
+```
+yarn android
 ```
 
-### Server-to-Client Messages
+#### iOS
 
-```json
-{
-  "type": "aiResponse",
-  "text": "Text response from the AI",
-  "audioBase64": "base64-encoded-audio-data",
-  "messageId": "reference-to-original-message-id",
-  "timestamp": 1621234567890
-}
 ```
+npm run ios
+```
+or
+```
+yarn ios
+```
+
+## Best Practices
+
+This project follows these best practices:
+
+- **Component Structure**: Each component is self-contained with its own styles
+- **State Management**: Context API for global state, useState/useReducer for local state
+- **Performance Optimization**: Memoization, lazy loading, and efficient re-rendering
+- **Code Organization**: Feature-based organization with clear separation of concerns
+- **Error Handling**: Comprehensive error handling and user feedback
+- **Accessibility**: Support for screen readers and accessibility features
+- **Testing**: Unit tests for critical functionality
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- React Native community for the excellent framework
-- Contributors and maintainers of the dependencies used in this project
-- All users who provide feedback and suggestions
-
----
-
-## Contribution Guidelines
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-Please ensure your code follows the project's coding style and includes appropriate documentation.
+Copyright © 2025 AIR-assist. All rights reserved.

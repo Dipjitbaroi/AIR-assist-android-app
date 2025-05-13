@@ -11,20 +11,16 @@
 
 import React, { useEffect } from 'react';
 import { SafeAreaView, StatusBar, LogBox, Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
 
-// Context Providers
-import { AppProvider } from './src/context/AppContext';
-import { BluetoothProvider } from './src/context/BluetoothContext';
+// Root Provider
+import RootProvider from './src/store';
 
-// Screens
-import HomeScreen from './src/screens/HomeScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
+// Navigation
+import AppNavigator from './src/navigation';
 
-// Styles and Utilities
-import { colors } from './src/styles/colors';
-import { PermissionsService } from './src/services/PermissionsService';
+// Utils
+import { permissions } from './src/utils';
+import theme from './src/styles/theme';
 
 /**
  * Ignore specific warnings that are known issues but don't affect functionality
@@ -40,9 +36,6 @@ LogBox.ignoreLogs([
   'componentWillReceiveProps has been renamed',
   'Require cycle:'
 ]);
-
-// Create the navigation stack
-const Stack = createStackNavigator();
 
 /**
  * Main App Component
@@ -65,9 +58,9 @@ const App = () => {
       try {
         // Request platform-specific permissions
         if (Platform.OS === 'android') {
-          await PermissionsService.requestAndroidPermissions();
+          await permissions.requestAndroidPermissions();
         } else if (Platform.OS === 'ios') {
-          await PermissionsService.requestIOSPermissions();
+          await permissions.requestIOSPermissions();
         }
       } catch (error) {
         console.error('Error requesting permissions:', error);
@@ -81,47 +74,18 @@ const App = () => {
   }, []);
 
   return (
-    <AppProvider>
-      <BluetoothProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          {/* Configure status bar appearance */}
-          <StatusBar
-            barStyle="light-content"
-            backgroundColor={colors.primary}
-          />
-          
-          {/* Main navigation container */}
-          <NavigationContainer>
-            <Stack.Navigator
-              initialRouteName="Home"
-              screenOptions={{
-                headerStyle: {
-                  backgroundColor: colors.primary,
-                },
-                headerTintColor: colors.white,
-                headerTitleStyle: {
-                  fontWeight: 'bold',
-                },
-              }}
-            >
-              {/* Home screen - main interface */}
-              <Stack.Screen
-                name="Home"
-                component={HomeScreen}
-                options={{ title: 'AIRAssist' }}
-              />
-              
-              {/* Settings screen */}
-              <Stack.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{ title: 'Settings' }}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </SafeAreaView>
-      </BluetoothProvider>
-    </AppProvider>
+    <RootProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        {/* Configure status bar appearance */}
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={theme.colors.primary}
+        />
+        
+        {/* Main navigation */}
+        <AppNavigator />
+      </SafeAreaView>
+    </RootProvider>
   );
 };
 

@@ -31,22 +31,20 @@ buildscript {
 
 allprojects {
     repositories {
-        // Make sure to put maven { url "$rootDir/../node_modules/react-native/android" } first
+        // React Native dependency repository
         maven {
             // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
             url("$rootDir/../node_modules/react-native/android")
-        }
-        maven {
-            // Android JSC is installed from npm
-            url("$rootDir/../node_modules/jsc-android/dist")
-        }
-        // React Native dependency repository
-        maven {
-            url "$rootDir/../node_modules/react-native/android"
             content {
                 includeGroup "com.facebook.react"
             }
         }
+        // Android JSC is installed from npm
+        maven {
+            url("$rootDir/../node_modules/jsc-android/dist")
+        }
+        // Google Maven repository
+        google()
         // Maven Central repository
         mavenCentral {
             // We don't want to fetch react-native from Maven Central as there are
@@ -55,15 +53,11 @@ allprojects {
                 excludeGroup "com.facebook.react"
             }
         }
-        // Google Maven repository
-        google()
         // JitPack repository for GitHub-hosted libraries
         maven { url 'https://www.jitpack.io' }
         // Sonatype Snapshots repository
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-        // Add jcenter for older dependencies
+        // Add jcenter for older dependencies (deprecated but sometimes needed)
         jcenter()
-        // Facebook Maven repository (for Flipper)
-        maven { url 'https://maven.pkg.github.com/facebook/flipper' }
     }
 }

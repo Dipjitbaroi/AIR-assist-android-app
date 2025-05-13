@@ -160,13 +160,12 @@ dependencies {
 
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
 
-    // Disabling Flipper for initial setup to avoid dependency issues
-    // We'll enable it again once the app is running successfully
-    // debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}")
-    // debugImplementation("com.facebook.flipper:flipper-network-plugin:${FLIPPER_VERSION}") {
-    //     exclude group:'com.squareup.okhttp3', module:'okhttp'
-    // }
-    // debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}")
+    // Enable Flipper for debugging
+    debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}")
+    debugImplementation("com.facebook.flipper:flipper-network-plugin:${FLIPPER_VERSION}") {
+        exclude group:'com.squareup.okhttp3', module:'okhttp'
+    }
+    debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}")
     
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

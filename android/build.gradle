@@ -12,6 +12,9 @@ buildscript {
         
         // Define Flipper version here for easy access by all modules
         FLIPPER_VERSION = '0.125.0'
+        
+        // Define Kotlin version to fix compilation issues
+        kotlinVersion = '1.7.20'
     }
     repositories {
         google()
@@ -26,6 +29,7 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle:7.3.1")
         classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
     }
 }
 

@@ -1,23 +1,92 @@
 # AIR-assist Android App Gradle Fix Guide
 
-This guide provides instructions for resolving common Gradle build issues in the AIR-assist Android app, particularly focusing on R.java generation failures that can occur with React Native native modules.
+This guide provides instructions for resolving common Gradle build issues in the AIR-assist Android app, particularly focusing on R.java generation failures, Kotlin compilation issues, BuildConfig duplicate class errors, and debug keystore issues that can occur with React Native native modules.
 
 ## Common Issues
 
 The most common build errors you might encounter are:
 
 - `Task :react-native-module:generateDebugRFile FAILED` errors
+- Kotlin compilation failures (`Task :react-native-screens:compileDebugKotlin FAILED`)
+- BuildConfig duplicate class errors (`error: duplicate class: com.airassist.BuildConfig`)
+- Debug keystore issues (`Failed to read key androiddebugkey from store`)
+- CMake warnings about compiler attributes
 - Gradle wrapper issues (`Could not find or load main class org.gradle.wrapper.GradleWrapperMain`)
 - Dependency resolution failures
 - Java version compatibility issues
+- Deprecated Gradle features warnings
 
 ## Fix Scripts
 
 We've provided several scripts to help resolve these issues:
 
-### 1. Fix R.java Generation Issues
+### 1. Complete Fix Script (Recommended)
 
-This script specifically targets the R.java generation failures that commonly occur with React Native native modules:
+This script addresses all known issues including R.java generation failures, Kotlin compilation errors, and CMake warnings:
+
+**In Command Prompt (cmd):**
+```
+fix-all-issues.bat
+```
+
+**In PowerShell:**
+```
+.\Fix-All-Issues.ps1
+```
+
+This script:
+- Cleans build folders for all problematic native modules
+- Updates dependency versions to compatible ones
+- Fixes Kotlin compilation issues
+- Addresses CMake warnings
+- Clears Gradle caches
+- Fixes Gradle wrapper files
+- Creates necessary configuration files
+- Cleans and rebuilds the project
+
+### 2. Debug Keystore Fix
+
+This script specifically targets the debug keystore issues:
+
+**In Command Prompt (cmd):**
+```
+fix-keystore-issue.bat
+```
+
+**In PowerShell:**
+```
+.\Fix-KeystoreIssue.ps1
+```
+
+This script:
+- Deletes the existing debug.keystore file
+- Creates a new valid debug.keystore with the correct keys and passwords
+- Cleans build directories
+- Rebuilds the project
+
+### 3. BuildConfig Duplicate Class Fix
+
+This script specifically targets the BuildConfig duplicate class error:
+
+**In Command Prompt (cmd):**
+```
+fix-buildconfig-issue.bat
+```
+
+**In PowerShell:**
+```
+.\Fix-BuildConfigIssue.ps1
+```
+
+This script:
+- Removes manually created BuildConfig.java files
+- Cleans build directories
+- Clears Gradle caches
+- Rebuilds the project
+
+### 2. Fix R.java Generation Issues
+
+This script specifically targets the R.java generation failures:
 
 **In Command Prompt (cmd):**
 ```
@@ -29,14 +98,9 @@ fix-r-java-issues.bat
 .\fix-r-java-issues.bat
 ```
 
-This script:
-- Cleans build folders for problematic native modules
-- Runs a special Gradle task to generate R.java files
-- Prepares the project for a clean rebuild
+### 3. Comprehensive Gradle Fix
 
-### 2. Comprehensive Gradle Fix
-
-This script performs a more thorough cleanup and setup of the Gradle environment:
+This script performs a thorough cleanup and setup of the Gradle environment:
 
 **In Command Prompt (cmd):**
 ```
@@ -48,12 +112,39 @@ fix-all-gradle-issues.bat
 .\fix-all-gradle-issues.bat
 ```
 
-This script:
-- Clears Gradle caches
-- Fixes Gradle wrapper files
-- Creates necessary configuration files
-- Cleans and rebuilds the project
-- Sets up proper Java environment
+### 4. All-in-One Fix and Run
+
+This script runs the fix scripts in sequence and then launches the app:
+
+**In Command Prompt (cmd):**
+```
+fix-and-run-app.bat
+```
+
+**In PowerShell:**
+```
+.\Fix-And-Run-App.ps1
+```
+
+## What We Fixed
+
+The following changes were made to fix the issues:
+
+1. **Updated Package Dependencies**:
+   - Pinned react-native-gesture-handler to version 2.9.0
+   - Pinned react-native-safe-area-context to version 4.5.0
+   - Pinned react-native-screens to version 3.19.0
+
+2. **Updated Gradle Configuration**:
+   - Added Kotlin version specification (1.7.20) to fix compilation issues
+   - Added Kotlin Gradle plugin to the dependencies
+   - Added configuration to suppress CMake warnings
+   - Added properties to avoid Gradle 8.0 deprecation warnings
+
+3. **Created Comprehensive Fix Scripts**:
+   - Added scripts to clean problematic module build folders
+   - Added scripts to reinstall node modules with fixed versions
+   - Added scripts to rebuild the project with the correct configuration
 
 ## Manual Fix Steps
 
@@ -85,26 +176,6 @@ If the scripts don't resolve your issues, you can try these manual steps:
    - Verify `android/settings.gradle` includes all native modules
    - Ensure `android/gradle.properties` has correct settings
 
-### 3. All-in-One Fix and Run
-
-This script runs both fix scripts in sequence and then launches the app:
-
-**In Command Prompt (cmd):**
-```
-fix-and-run-app.bat
-```
-
-**In PowerShell:**
-```
-.\fix-and-run-app.bat
-```
-
-**PowerShell Native Script:**
-We've also provided a native PowerShell script that you can run directly:
-```
-.\Fix-And-Run-App.ps1
-```
-
 ## Running the App
 
 After fixing the Gradle issues, you can run the app with:
@@ -120,7 +191,7 @@ npm run android
 
 Alternatively, you can use the native PowerShell script which doesn't require this prefix:
 ```
-.\Fix-And-Run-App.ps1
+.\Fix-All-Issues.ps1
 ```
 
 ## Troubleshooting
